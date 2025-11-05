@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 Assistente de Voz IA - Real Time</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #4a5568;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 1.1rem;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+
+        .status.disconnected {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        .status.connected {
+            background: #c6f6d5;
+            color: #276749;
+        }
+
+        .status.speaking {
+            background: #bee3f8;
+            color: #2a69ac;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-connect {
+            background: linear-gradient(45deg, #48bb78, #38a169);
+            color: white;
+        }
+
+        .btn-connect:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(72, 187, 120, 0.3);
+        }
+
+        .btn-speak {
+            background: linear-gradient(45deg, #4299e1, #3182ce);
+            color: white;
+        }
+
+        .btn-speak:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(66, 153, 225, 0.3);
+        }
+
+        .btn-speak.recording {
+            background: linear-gradient(45deg, #f56565, #e53e3e);
+            animation: recording-pulse 1s infinite;
+        }
+
+        @keyframes recording-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .visualizer {
+            height: 100px;
+            background: #f7fafc;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .wave {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .wave-bar {
+            width: 3px;
+            background: #4299e1;
+            border-radius: 2px;
+            transition: height 0.1s ease;
+        }
+
+        .messages {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f7fafc;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .message.user {
+            background: #e2e8f0;
+            color: #2d3748;
+            margin-left: 20px;
+        }
+
+        .message.assistant {
+            background: #bee3f8;
+            color: #2a69ac;
+            margin-right: 20px;
+        }
+
+        .message.notification {
+            background: #fef5e7;
+            color: #744210;
+            text-align: center;
+            font-style: italic;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #718096;
+        }
+
+        .support-note {
+            font-size: 0.8rem;
+            color: #a0aec0;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+                margin: 20px;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Assistente de Voz IA</h1>
+            <p>Powered by Gemini 2.0 & Eleven Labs</p>
+        </div>
+
+        <div id="status" class="status disconnected">
+            <div class="status-dot"></div>
+            <span>Desconectado</span>
+        </div>
+
+        <div class="controls">
+            <button id="connectBtn" class="btn btn-connect">
+                🔌 Conectar
+            </button>
+            <button id="speakBtn" class="btn btn-speak" disabled>
+                🎤 Falar
+            </button>
+        </div>
+
+        <div class="visualizer" id="visualizer">
+            <div class="wave" id="wave"></div>
+        </div>
+
+        <div class="messages" id="messages"></div>
+
+        <div class="footer">
+            <div>WebSocket Real-Time Communication</div>
+            <div class="support-note">
+                Suporte: Chrome, Firefox, Edge (permissão de microfone necessária)
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class VoiceAssistant {
+            constructor() {
+                this.ws = null;
+                this.isConnected = false;
+                this.isRecording = false;
+                this.recognition = null;
+                this.audioContext = null;
+                this.analyser = null;
+                this.microphone = null;
+                this.waveBars = [];
+                
+                this.initElements();
+                this.initVisualizer();
+                this.initSpeechRecognition();
+                this.bindEvents();
+            }
+
+            initElements() {
+                this.statusEl = document.getElementById('status');
+                this.connectBtn = document.getElementById('connectBtn');
+                this.speakBtn = document.getElementById('speakBtn');
+                this.messagesEl = document.getElementById('messages');
+                this.visualizerEl = document.getElementById('visualizer');
+                this.waveEl = document.getElementById('wave');
+            }
+
+            initVisualizer() {
+                // Criar barras do visualizador
+                for (let i = 0; i < 32; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = 'wave-bar';
+                    bar.style.height = '10px';
+                    this.waveEl.appendChild(bar);
+                    this.waveBars.push(bar);
+                }
+            }
+
+            initSpeechRecognition() {
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    this.recognition = new SpeechRecognition();
+                    this.recognition.continuous = false;
+                    this.recognition.interimResults = false;
+                    this.recognition.lang = 'pt-BR';
+
+                    this.recognition.onstart = () => {
+                        this.isRecording = true;
+                        this.updateSpeakButton();
+                        this.updateStatus('speaking', 'Ouvindo...');
+                        this.startMicrophoneVisualization();
+                    };
+
+                    this.recognition.onresult = (event) => {
+                        const transcript = event.results[0][0].transcript;
+                        this.addMessage('user', transcript);
+                        this.sendMessage(transcript);
+                    };
+
+                    this.recognition.onend = () => {
+                        this.isRecording = false;
+                        this.updateSpeakButton();
+                        this.updateStatus('connected', 'Conectado');
+                        this.stopMicrophoneVisualization();
+                    };
+
+                    this.recognition.onerror = (event) => {
+                        console.error('Erro no reconhecimento:', event.error);
+                        this.isRecording = false;
+                        this.updateSpeakButton();
+                        this.updateStatus('connected', 'Conectado');
+                        this.addMessage('notification', `Erro no reconhecimento: ${event.error}`);
+                        this.stopMicrophoneVisualization();
+                    };
+                } else {
+                    this.addMessage('notification', 'Reconhecimento de voz não suportado neste navegador');
+                }
+            }
+
+            bindEvents() {
+                this.connectBtn.addEventListener('click', () => {
+                    if (this.isConnected) {
+                        this.disconnect();
+                    } else {
+                        this.connect();
+                    }
+                });
+
+                this.speakBtn.addEventListener('click', () => {
+                    if (this.isRecording) {
+                        this.stopListening();
+                    } else {
+                        this.startListening();
+                    }
+                });
+            }
+
+            connect() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}`;
+                
+                this.ws = new WebSocket(wsUrl);
+
+                this.ws.onopen = () => {
+                    this.isConnected = true;
+                    this.updateStatus('connected', 'Conectado');
+                    this.updateConnectButton();
+                    this.speakBtn.disabled = false;
+                    this.addMessage('notification', 'Conectado ao servidor!');
+                };
+
+                this.ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        this.handleMessage(data);
+                    } catch (error) {
+                        console.error('Erro ao processar mensagem:', error);
+                    }
+                };
+
+                this.ws.onclose = () => {
+                    this.isConnected = false;
+                    this.updateStatus('disconnected', 'Desconectado');
+                    this.updateConnectButton();
+                    this.speakBtn.disabled = true;
+                    this.addMessage('notification', 'Conexão perdida');
+                };
+
+                this.ws.onerror = (error) => {
+                    console.error('Erro WebSocket:', error);
+                    this.addMessage('notification', 'Erro de conexão');
+                };
+            }
+
+            disconnect() {
+                if (this.ws) {
+                    this.ws.close();
+                }
+            }
+
+            handleMessage(data) {
+                switch (data.type) {
+                    case 'response':
+                        this.addMessage('assistant', data.text);
+                        break;
+                    
+                    case 'audio':
+                        this.playAudio(data.data);
+                        break;
+                    
+                    case 'notification':
+                        this.addMessage('notification', data.message);
+                        break;
+                    
+                    case 'error':
+                        this.addMessage('notification', `Erro: ${data.message}`);
+                        break;
+                }
+            }
+
+            sendMessage(text) {
+                if (this.ws && this.isConnected) {
+                    this.ws.send(JSON.stringify({
+                        type: 'chat',
+                        text: text
+                    }));
+                }
+            }
+
+            startListening() {
+                if (this.recognition && !this.isRecording) {
+                    try {
+                        this.recognition.start();
+                    } catch (error) {
+                        console.error('Erro ao iniciar reconhecimento:', error);
+                        this.addMessage('notification', 'Erro ao iniciar reconhecimento de voz');
+                    }
+                }
+            }
+
+            stopListening() {
+                if (this.recognition && this.isRecording) {
+                    this.recognition.stop();
+                }
+            }
+
+            async startMicrophoneVisualization() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.analyser = this.audioContext.createAnalyser();
+                    this.microphone = this.audioContext.createMediaStreamSource(stream);
+                    
+                    this.analyser.fftSize = 64;
+                    this.microphone.connect(this.analyser);
+                    
+                    this.visualizeAudio();
+                } catch (error) {
+                    console.error('Erro ao acessar microfone:', error);
+                }
+            }
+
+            stopMicrophoneVisualization() {
+                if (this.audioContext) {
+                    this.audioContext.close();
+                    this.audioContext = null;
+                }
+                
+                // Reset das barras
+                this.waveBars.forEach(bar => {
+                    bar.style.height = '10px';
+                });
+            }
+
+            visualizeAudio() {
+                if (!this.analyser || !this.isRecording) return;
+
+                const bufferLength = this.analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                this.analyser.getByteFrequencyData(dataArray);
+
+                // Atualizar barras do visualizador
+                for (let i = 0; i < this.waveBars.length; i++) {
+                    const value = dataArray[i] || 0;
+                    const height = Math.max(10, (value / 255) * 80);
+                    this.waveBars[i].style.height = `${height}px`;
+                }
+
+                if (this.isRecording) {
+                    requestAnimationFrame(() => this.visualizeAudio());
+                }
+            }
+
+            playAudio(base64Data) {
+                try {
+                    const audioData = 'data:audio/mpeg;base64,' + base64Data;
+                    const audio = new Audio(audioData);
+                    audio.play().catch(error => {
+                        console.error('Erro ao reproduzir áudio:', error);
+                    });
+                } catch (error) {
+                    console.error('Erro ao processar áudio:', error);
+                }
+            }
+
+            addMessage(type, text) {
+                const messageEl = document.createElement('div');
+                messageEl.className = `message ${type}`;
+                messageEl.textContent = text;
+                this.messagesEl.appendChild(messageEl);
+                this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+            }
+
+            updateStatus(status, text) {
+                this.statusEl.className = `status ${status}`;
+                this.statusEl.querySelector('span').textContent = text;
+            }
+
+            updateConnectButton() {
+                if (this.isConnected) {
+                    this.connectBtn.textContent = '🔌 Desconectar';
+                    this.connectBtn.className = 'btn btn-connect';
+                } else {
+                    this.connectBtn.textContent = '🔌 Conectar';
+                    this.connectBtn.className = 'btn btn-connect';
+                }
+            }
+
+            updateSpeakButton() {
+                if (this.isRecording) {
+                    this.speakBtn.textContent = '🛑 Parar';
+                    this.speakBtn.className = 'btn btn-speak recording';
+                } else {
+                    this.speakBtn.textContent = '🎤 Falar';
+                    this.speakBtn.className = 'btn btn-speak';
+                }
+            }
+        }
+
+        // Inicializar aplicação
+        document.addEventListener('DOMContentLoaded', () => {
+            new VoiceAssistant();
+        });
+    </script>
+</body>
+</html>
